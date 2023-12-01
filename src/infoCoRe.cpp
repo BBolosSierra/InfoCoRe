@@ -9,24 +9,39 @@
 
 
 // [[Rcpp::export]]
+// Function to calculate entropy of a probability distribution
+// Input: mu - a vector representing the probability distribution
+// Output: ent - the calculated entropy value
+
 void entropy( const arma::vec& mu,
               double& ent ){
-
+  
+  // Declare variables
   arma::uword i;
-  double N = mu.n_elem;
+  double N = mu.n_elem; // Number of elements in the vector mu
   double sum=0;
-  arma::vec tmp; tmp.zeros(N);
+  arma::vec tmp; tmp.zeros(N); // Initialize a vector of zeros with the same size as mu
 
+  // Calculate the sum of mu[i] * log(mu[i]) for each element in mu
   for( i=0; i<N; i++ ){
     sum += mu[i] * std::log(mu[i]);
   }
   
+  // Calculate the entropy
   ent      = -sum/std::log(N);
   
 }
 
 
 // [[Rcpp::export]]
+// Function to calculate a probability distribution from input values
+// using an exponential operation and normalization.
+// Variables:
+//   lambda: Vector of input values
+//   mu: Vector to store the output probability distribution
+//   tau: Parameter controlling the influence of the exponential operation
+//        Default value is 1
+
 void net_operator( const arma::vec& lambda,
                    arma::vec& mu,
                    double tau=1 ){
@@ -47,6 +62,15 @@ void net_operator( const arma::vec& lambda,
 }
 
 // [[Rcpp::export]]
+// Function to calculate the eigenvalues and/or eigenvectors of a dense matrix 'x'
+// Input:
+//   x: Input matrix
+//   eigval: Vector to store the eigenvalues
+//   eigvec: Matrix to store the eigenvectors
+//   val_only: Optional parameter indicating whether to compute only eigenvalues (1) or both eigenvalues and eigenvectors (0)
+//             Default is 0 (compute both)
+//   order: Optional parameter indicating whether to order the eigenvalues in ascending order (0) or descending order (1)
+//          Default is 1 (descending order)
 void get_eig( const arma::Mat<double>& x,
               arma::vec& eigval,
               arma::Mat<double>& eigvec,
@@ -60,11 +84,14 @@ void get_eig( const arma::Mat<double>& x,
 
   // Calculate the eigenvalues & vectors of dense matrix 'x'
   if( option_valOnly == 1 ){
+    // Only eigenvalues
     arma::eig_sym(eigval, x);
   } else {
+    // Both eigenvalues and eigenvectors
     arma::eig_sym(eigval, eigvec, x);
   }
   
+  // Ordering of eigenvalues and coefficients
   if( option_ord == 1 ){
   
     // Swap the eigenvalues since they are ordered backwards (we need largest
@@ -72,7 +99,7 @@ void get_eig( const arma::Mat<double>& x,
     for( i=0; i<floor(eigval.n_elem / 2.0); ++i){
       eigval.swap_rows(i, (eigval.n_elem - 1) - i);
     }
-  
+    
     // Flip the coefficients to produce the same effect.
     if( option_valOnly == 0 ){
       eigvec = arma::fliplr(eigvec);

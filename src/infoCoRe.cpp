@@ -9,12 +9,11 @@
 
 
 // [[Rcpp::export]]
-// Function to calculate entropy of a probability distribution
-// Input: mu - a vector representing the probability distribution
-// Output: ent - the calculated entropy value
-
 void entropy( const arma::vec& mu,
               double& ent ){
+  // Function to calculate entropy of a probability distribution
+  // Input: mu - a vector representing the probability distribution
+  // Output: ent - the calculated entropy value
   
   // Declare variables
   arma::uword i;
@@ -34,17 +33,16 @@ void entropy( const arma::vec& mu,
 
 
 // [[Rcpp::export]]
-// Function to calculate a probability distribution from input values
-// using an exponential operation and normalization.
-// Variables:
-//   lambda: Vector of input values
-//   mu: Vector to store the output probability distribution
-//   tau: Parameter controlling the influence of the exponential operation
-//        Default value is 1
-
 void net_operator( const arma::vec& lambda,
                    arma::vec& mu,
                    double tau=1 ){
+  // Function to calculate a probability distribution from input values
+  // using an exponential operation and normalization.
+  // Variables:
+  //   lambda: Vector of input values
+  //   mu: Vector to store the output probability distribution
+  //   tau: Parameter controlling the influence of the exponential operation
+  //        Default value is 1
 
   arma::uword i;
   double N    = lambda.n_elem;
@@ -62,20 +60,20 @@ void net_operator( const arma::vec& lambda,
 }
 
 // [[Rcpp::export]]
-// Function to calculate the eigenvalues and/or eigenvectors of a dense matrix 'x'
-// Input:
-//   x: Input matrix
-//   eigval: Vector to store the eigenvalues
-//   eigvec: Matrix to store the eigenvectors
-//   val_only: Optional parameter indicating whether to compute only eigenvalues (1) or both eigenvalues and eigenvectors (0)
-//             Default is 0 (compute both)
-//   order: Optional parameter indicating whether to order the eigenvalues in ascending order (0) or descending order (1)
-//          Default is 1 (descending order)
 void get_eig( const arma::Mat<double>& x,
               arma::vec& eigval,
               arma::Mat<double>& eigvec,
               Rcpp::IntegerVector val_only=0,
               Rcpp::IntegerVector order=1 ){
+  // Function to calculate the eigenvalues and/or eigenvectors of a dense matrix 'x'
+  // Input:
+  //   x: Input matrix
+  //   eigval: Vector to store the eigenvalues
+  //   eigvec: Matrix to store the eigenvectors
+  //   val_only: Optional parameter indicating whether to compute only eigenvalues (1) or both eigenvalues and eigenvectors (0)
+  //             Default is 0 (compute both)
+  //   order: Optional parameter indicating whether to order the eigenvalues in ascending order (0) or descending order (1)
+  //          Default is 1 (descending order)
 
   arma::uword i,option_valOnly,option_ord;
 

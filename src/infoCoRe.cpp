@@ -8,12 +8,50 @@
 // website: https://journals.aps.org/prresearch/pdf/10.1103/PhysRevResearch.4.033196
 
 
+// Numerical differentiation to calculate C(τ)
+// [[Rcpp::export]]
+void calculate_specific_heat(const arma::vec& tau_vec,
+                             const arma::vec& ent_vector,
+                             arma::vec& specific_heat,
+                             arma::uvec& heat_peak_indices,
+                             arma::vec& tau_peak_values) {
+  // Check if the lengths of tau_vec and entropy_vector match
+  if (tau_vec.n_elem != ent_vector.n_elem) {
+    Rcpp::stop("Lengths of tau_vec and entropy_vector must be the same.");
+  }
+  // Calculate finite differences to approximate the derivative
+  specific_heat.set_size(tau_vec.n_elem);
+  for (arma::uword i = 1; i < tau_vec.n_elem; ++i) {
+    double delta_tau = std::log(tau_vec[i]) - std::log(tau_vec[i - 1]);
+    double delta_entropy = ent_vector[i] - ent_vector[i - 1];
+    
+    // Use finite difference formula to approximate the derivative
+    specific_heat[i] = - (delta_entropy / delta_tau);
+  }
+  // The first element is left undefined, set it to zero or some default value
+  specific_heat[0] = 0.0;
+  
+  // Detect peaks
+  for (arma::uword i = 1; i < specific_heat.n_elem - 1; ++i) {
+    if (specific_heat[i] > specific_heat[i - 1] && specific_heat[i] > specific_heat[i + 1]) {
+      // i is a peak index
+      heat_peak_indices.resize(heat_peak_indices.n_elem + 1);
+      heat_peak_indices(heat_peak_indices.n_elem - 1) = i;
+      
+      // Store corresponding tau value
+      tau_peak_values.resize(tau_peak_values.n_elem + 1);
+      tau_peak_values(tau_peak_values.n_elem - 1) = tau_vec[i];
+    }
+  }
+}
+
+
+// Function to calculate entropy of a probability distribution
+// Input: mu - a vector representing the probability distribution
+// Output: ent - the calculated entropy value
 // [[Rcpp::export]]
 void entropy( const arma::vec& mu,
               double& ent ){
-  // Function to calculate entropy of a probability distribution
-  // Input: mu - a vector representing the probability distribution
-  // Output: ent - the calculated entropy value
   
   // Declare variables
   arma::uword i;
@@ -31,24 +69,24 @@ void entropy( const arma::vec& mu,
   
 }
 
-
+// Function to calculate a probability distribution from input values
+// using an exponential operation and normalization.
+// Variables:
+//   lambda: Vector of input values
+//   mu: Vector to store the output probability distribution
+//   tau: Parameter controlling the influence of the exponential operation
+//        Default value is 1
 // [[Rcpp::export]]
 void net_operator( const arma::vec& lambda,
                    arma::vec& mu,
                    double tau=1 ){
-  // Function to calculate a probability distribution from input values
-  // using an exponential operation and normalization.
-  // Variables:
-  //   lambda: Vector of input values
-  //   mu: Vector to store the output probability distribution
-  //   tau: Parameter controlling the influence of the exponential operation
-  //        Default value is 1
-
+  
   arma::uword i;
   double N    = lambda.n_elem;
   double norm = 0;
   double val;
   arma::vec tmp; tmp.zeros(N);
+  
 
   for( i=0; i<N; i++ ){
     val    = std::exp(-1*lambda[i]*tau);
@@ -59,21 +97,72 @@ void net_operator( const arma::vec& lambda,
   mu = tmp/norm;
 }
 
+// Function to calculate entropy for each column in a matrix of probability distributions
+// Input: mu_matrix - a matrix representing probability distributions (each column is a distribution)
+// Output: ent_vector - a vector containing the calculated entropy values for each column
+// [[Rcpp::export]]
+void entropy_matrix(const arma::mat& mu_matrix, arma::vec& ent_vector) {
+  
+  arma::uword num_cols = mu_matrix.n_cols;
+  ent_vector.set_size(num_cols);
+  
+  for (arma::uword j = 0; j < num_cols; ++j) {
+    const arma::vec& mu = mu_matrix.col(j);
+    
+    // Declare variables
+    double N = mu.n_elem; // Number of elements in the vector mu
+    double sum = 0;
+    arma::vec tmp;
+    tmp.zeros(N); // Initialize a vector of zeros with the same size as mu
+    
+    // Calculate the sum of mu[i] * log(mu[i]) for each element in mu
+    for (arma::uword i = 0; i < N; i++) {
+      sum += mu[i] * std::log(mu[i]);
+    }
+    // Calculate the entropy
+    ent_vector(j) = -sum / std::log(N);
+  }
+}
+
+// [[Rcpp::export]]
+void get_transition_tau(const arma::vec& lambda,
+                        arma::mat& mu_matrix,
+                        const arma::vec& tau_vec){
+  arma::uword i, j;
+  double N = lambda.n_elem;
+  double norm;
+  double val;
+  arma::vec tmp;
+  mu_matrix.set_size(N, tau_vec.n_elem);
+  
+  for (j = 0; j < tau_vec.n_elem; ++j) {
+    norm = 0;
+    tmp.zeros(N);
+    
+    for (i = 0; i < N; i++) {
+      val = std::exp(-1 * lambda[i] * tau_vec[j]);
+      tmp[i] = val;
+      norm += val;
+    }
+    mu_matrix.col(j) = tmp / norm;
+  }
+}
+
+// Function to calculate the eigenvalues and/or eigenvectors of a dense matrix 'x'
+// Input:
+//   x: Input matrix
+//   eigval: Vector to store the eigenvalues
+//   eigvec: Matrix to store the eigenvectors
+//   val_only: Optional parameter indicating whether to compute only eigenvalues (1) or both eigenvalues and eigenvectors (0)
+//             Default is 0 (compute both)
+//   order: Optional parameter indicating whether to order the eigenvalues in ascending order (0) or descending order (1)
+//          Default is 1 (descending order)
 // [[Rcpp::export]]
 void get_eig( const arma::Mat<double>& x,
               arma::vec& eigval,
               arma::Mat<double>& eigvec,
               Rcpp::IntegerVector val_only=0,
               Rcpp::IntegerVector order=1 ){
-  // Function to calculate the eigenvalues and/or eigenvectors of a dense matrix 'x'
-  // Input:
-  //   x: Input matrix
-  //   eigval: Vector to store the eigenvalues
-  //   eigvec: Matrix to store the eigenvectors
-  //   val_only: Optional parameter indicating whether to compute only eigenvalues (1) or both eigenvalues and eigenvectors (0)
-  //             Default is 0 (compute both)
-  //   order: Optional parameter indicating whether to order the eigenvalues in ascending order (0) or descending order (1)
-  //          Default is 1 (descending order)
 
   arma::uword i,option_valOnly,option_ord;
 
@@ -101,9 +190,9 @@ void get_eig( const arma::Mat<double>& x,
     // Flip the coefficients to produce the same effect.
     if( option_valOnly == 0 ){
       eigvec = arma::fliplr(eigvec);
+      
     }
   }
-  
 }
 
 // [[Rcpp::export]]
@@ -290,13 +379,15 @@ arma::Mat<std::complex<double>> laplacian_cx( const arma::SpMat<double>& Adj,
 
 }
 
+
 // [[Rcpp::export]]
-void driver( const arma::SpMat<double>& Adj,
+Rcpp::List driver( const arma::SpMat<double>& Adj,
              Rcpp::IntegerVector weighted=0,
              Rcpp::IntegerVector directed=0,
              Rcpp::IntegerVector norm=1,
              Rcpp::IntegerVector val_only=0,
-             Rcpp::IntegerVector order=1){
+             Rcpp::IntegerVector order=1,
+             const arma::vec& custom_tau_vec = Rcpp::NumericVector::create(1.0, 10, 50, 100)){
 
   arma::uword option_dir,option_we,option_norm,option_valOnly,option_ord;
   option_dir     = directed[0];
@@ -307,15 +398,24 @@ void driver( const arma::SpMat<double>& Adj,
   
   arma::Mat<double> L;
   arma::Mat<std::complex<double>> L_dir;
+  arma::vec tau_vec = custom_tau_vec;
 
   arma::Mat<double> eigvec;
   arma::vec         eigval;
-  arma::vec         mu;
-  double            tau=1;
+  arma::vec         mu; // for mu = 1 (net_operator)
+  arma::mat         mu_matrix; // Matrix for get_transition_tau
+  arma::vec         ent_vector;
+  arma::vec         specific_heat;
+  arma::uvec        heat_peak_indices; 
+  arma::vec         tau_peak_indices;
   double            ent=-1;
+  double            tau=1;
+  
   
   arma::Mat<std::complex<double>> cx_eigvec;
   arma::vec         cx_eigval;
+  
+  Rcpp::List result;
   
   if( option_dir == 0 ){
     cout << "> undirected Adj: " << endl;
@@ -332,15 +432,52 @@ void driver( const arma::SpMat<double>& Adj,
     eigvec.brief_print("eigvec:");
 
     cout << "> TEST2: " << endl;
-    net_operator(eigval, mu, tau=tau); 
-
-    mu.brief_print("mu:");
-
+    
+    net_operator(eigval, mu, tau = 1);
+    
+    mu.brief_print("mu (net_operator):");
+    
     cout << "> TEST3: " << endl;
-    entropy(mu, ent); 
+    
+    entropy(mu, ent);
 
     cout << "> entropy: " << ent << endl;
 
+    cout << "> TEST4: " << endl;
+    
+    get_transition_tau(eigval, mu_matrix, tau_vec);
+    
+    mu_matrix.brief_print("mu (get_transition_tau):");
+    
+    tau_vec.brief_print("taus:");
+    
+    cout << "> TEST5: " << endl;
+    
+    entropy_matrix(mu_matrix, ent_vector);
+    
+    ent_vector.brief_print("Entropy values per tau:");
+    
+    cout << "> TEST6: " << endl;
+    
+    calculate_specific_heat(tau_vec, ent_vector, specific_heat, heat_peak_indices, tau_peak_indices);
+    
+    specific_heat.brief_print("Specific Heat values per tau:");
+    
+    cout << "> Creating result list... " << endl;
+    
+    result["L"] = Rcpp::wrap(L);
+    result["eigval"] = Rcpp::wrap(eigval);
+    result["eigvec"] = Rcpp::wrap(eigvec);
+    result["mu"] = Rcpp::wrap(mu);
+    result["entropy"] = Rcpp::wrap(ent);
+    result["tau_vec"] = Rcpp::wrap(tau_vec);
+    result["mu_matrix"] = Rcpp::wrap(mu_matrix);
+    result["ent_vector"] = Rcpp::wrap(ent_vector);
+    result["specific_heat"] = Rcpp::wrap(specific_heat);
+    result["heat_peak_indices"] = Rcpp::wrap(heat_peak_indices);
+    result["tau_peak_indices"] = Rcpp::wrap(tau_peak_indices);
+    
+    cout << "> Done!! " << endl;
     
   } else {
     cout << "> directed Adj: " << endl;
@@ -357,7 +494,9 @@ void driver( const arma::SpMat<double>& Adj,
     cx_eigval.brief_print("cx_eigval:");
 
     cx_eigvec.brief_print("cx_eigvec:");
+
   }
   
+  return Rcpp::wrap(result);
 }
 

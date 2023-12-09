@@ -11,6 +11,20 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// calculate_specific_heat
+void calculate_specific_heat(const arma::vec& tau_vec, const arma::vec& ent_vector, arma::vec& specific_heat, arma::uvec& heat_peak_indices, arma::vec& tau_peak_values);
+RcppExport SEXP _infoCoRe_calculate_specific_heat(SEXP tau_vecSEXP, SEXP ent_vectorSEXP, SEXP specific_heatSEXP, SEXP heat_peak_indicesSEXP, SEXP tau_peak_valuesSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type tau_vec(tau_vecSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type ent_vector(ent_vectorSEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type specific_heat(specific_heatSEXP);
+    Rcpp::traits::input_parameter< arma::uvec& >::type heat_peak_indices(heat_peak_indicesSEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type tau_peak_values(tau_peak_valuesSEXP);
+    calculate_specific_heat(tau_vec, ent_vector, specific_heat, heat_peak_indices, tau_peak_values);
+    return R_NilValue;
+END_RCPP
+}
 // entropy
 void entropy(const arma::vec& mu, double& ent);
 RcppExport SEXP _infoCoRe_entropy(SEXP muSEXP, SEXP entSEXP) {
@@ -31,6 +45,29 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::vec& >::type mu(muSEXP);
     Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
     net_operator(lambda, mu, tau);
+    return R_NilValue;
+END_RCPP
+}
+// entropy_matrix
+void entropy_matrix(const arma::mat& mu_matrix, arma::vec& ent_vector);
+RcppExport SEXP _infoCoRe_entropy_matrix(SEXP mu_matrixSEXP, SEXP ent_vectorSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type mu_matrix(mu_matrixSEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type ent_vector(ent_vectorSEXP);
+    entropy_matrix(mu_matrix, ent_vector);
+    return R_NilValue;
+END_RCPP
+}
+// get_transition_tau
+void get_transition_tau(const arma::vec& lambda, arma::mat& mu_matrix, const arma::vec& tau_vec);
+RcppExport SEXP _infoCoRe_get_transition_tau(SEXP lambdaSEXP, SEXP mu_matrixSEXP, SEXP tau_vecSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type lambda(lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type mu_matrix(mu_matrixSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type tau_vec(tau_vecSEXP);
+    get_transition_tau(lambda, mu_matrix, tau_vec);
     return R_NilValue;
 END_RCPP
 }
@@ -88,9 +125,10 @@ BEGIN_RCPP
 END_RCPP
 }
 // driver
-void driver(const arma::SpMat<double>& Adj, Rcpp::IntegerVector weighted, Rcpp::IntegerVector directed, Rcpp::IntegerVector norm, Rcpp::IntegerVector val_only, Rcpp::IntegerVector order);
-RcppExport SEXP _infoCoRe_driver(SEXP AdjSEXP, SEXP weightedSEXP, SEXP directedSEXP, SEXP normSEXP, SEXP val_onlySEXP, SEXP orderSEXP) {
+Rcpp::List driver(const arma::SpMat<double>& Adj, Rcpp::IntegerVector weighted, Rcpp::IntegerVector directed, Rcpp::IntegerVector norm, Rcpp::IntegerVector val_only, Rcpp::IntegerVector order, const arma::vec& custom_tau_vec);
+RcppExport SEXP _infoCoRe_driver(SEXP AdjSEXP, SEXP weightedSEXP, SEXP directedSEXP, SEXP normSEXP, SEXP val_onlySEXP, SEXP orderSEXP, SEXP custom_tau_vecSEXP) {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::SpMat<double>& >::type Adj(AdjSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type weighted(weightedSEXP);
@@ -98,19 +136,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type norm(normSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type val_only(val_onlySEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type order(orderSEXP);
-    driver(Adj, weighted, directed, norm, val_only, order);
-    return R_NilValue;
+    Rcpp::traits::input_parameter< const arma::vec& >::type custom_tau_vec(custom_tau_vecSEXP);
+    rcpp_result_gen = Rcpp::wrap(driver(Adj, weighted, directed, norm, val_only, order, custom_tau_vec));
+    return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_infoCoRe_calculate_specific_heat", (DL_FUNC) &_infoCoRe_calculate_specific_heat, 5},
     {"_infoCoRe_entropy", (DL_FUNC) &_infoCoRe_entropy, 2},
     {"_infoCoRe_net_operator", (DL_FUNC) &_infoCoRe_net_operator, 3},
+    {"_infoCoRe_entropy_matrix", (DL_FUNC) &_infoCoRe_entropy_matrix, 2},
+    {"_infoCoRe_get_transition_tau", (DL_FUNC) &_infoCoRe_get_transition_tau, 3},
     {"_infoCoRe_get_eig", (DL_FUNC) &_infoCoRe_get_eig, 5},
     {"_infoCoRe_get_eig_cx", (DL_FUNC) &_infoCoRe_get_eig_cx, 5},
     {"_infoCoRe_laplacian", (DL_FUNC) &_infoCoRe_laplacian, 2},
     {"_infoCoRe_laplacian_cx", (DL_FUNC) &_infoCoRe_laplacian_cx, 3},
-    {"_infoCoRe_driver", (DL_FUNC) &_infoCoRe_driver, 6},
+    {"_infoCoRe_driver", (DL_FUNC) &_infoCoRe_driver, 7},
     {NULL, NULL, 0}
 };
 

@@ -2,6 +2,8 @@ useDynLib(infoCoRe)
 importFrom(Rcpp, evalCpp)
 export(entropy,
        net_operator,
+       entropy_matrix,
+       get_transition_tau,
        laplacian,
        get_eig,
        get_eig_cx,

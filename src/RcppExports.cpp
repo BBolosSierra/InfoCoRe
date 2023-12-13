@@ -25,6 +25,18 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// renormalize_graph
+Rcpp::List renormalize_graph(const arma::Mat<double>& x, const arma::vec& tau_peak_values);
+RcppExport SEXP _infoCoRe_renormalize_graph(SEXP xSEXP, SEXP tau_peak_valuesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::Mat<double>& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type tau_peak_values(tau_peak_valuesSEXP);
+    rcpp_result_gen = Rcpp::wrap(renormalize_graph(x, tau_peak_values));
+    return rcpp_result_gen;
+END_RCPP
+}
 // entropy
 void entropy(const arma::vec& mu, double& ent);
 RcppExport SEXP _infoCoRe_entropy(SEXP muSEXP, SEXP entSEXP) {
@@ -59,15 +71,15 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
-// get_transition_tau
-void get_transition_tau(const arma::vec& lambda, arma::mat& mu_matrix, const arma::vec& tau_vec);
-RcppExport SEXP _infoCoRe_get_transition_tau(SEXP lambdaSEXP, SEXP mu_matrixSEXP, SEXP tau_vecSEXP) {
+// net_operator_mat
+void net_operator_mat(const arma::vec& lambda, arma::mat& mu_matrix, const arma::vec& tau_vec);
+RcppExport SEXP _infoCoRe_net_operator_mat(SEXP lambdaSEXP, SEXP mu_matrixSEXP, SEXP tau_vecSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type lambda(lambdaSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type mu_matrix(mu_matrixSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type tau_vec(tau_vecSEXP);
-    get_transition_tau(lambda, mu_matrix, tau_vec);
+    net_operator_mat(lambda, mu_matrix, tau_vec);
     return R_NilValue;
 END_RCPP
 }
@@ -144,10 +156,11 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_infoCoRe_calculate_specific_heat", (DL_FUNC) &_infoCoRe_calculate_specific_heat, 5},
+    {"_infoCoRe_renormalize_graph", (DL_FUNC) &_infoCoRe_renormalize_graph, 2},
     {"_infoCoRe_entropy", (DL_FUNC) &_infoCoRe_entropy, 2},
     {"_infoCoRe_net_operator", (DL_FUNC) &_infoCoRe_net_operator, 3},
     {"_infoCoRe_entropy_matrix", (DL_FUNC) &_infoCoRe_entropy_matrix, 2},
-    {"_infoCoRe_get_transition_tau", (DL_FUNC) &_infoCoRe_get_transition_tau, 3},
+    {"_infoCoRe_net_operator_mat", (DL_FUNC) &_infoCoRe_net_operator_mat, 3},
     {"_infoCoRe_get_eig", (DL_FUNC) &_infoCoRe_get_eig, 5},
     {"_infoCoRe_get_eig_cx", (DL_FUNC) &_infoCoRe_get_eig_cx, 5},
     {"_infoCoRe_laplacian", (DL_FUNC) &_infoCoRe_laplacian, 2},

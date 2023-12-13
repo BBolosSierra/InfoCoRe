@@ -20,6 +20,7 @@
 #include <cstddef>     //defines std::size_t (unsigned) and std::ssize_t (signed)
 #include <stdlib.h>    // to use malloc and free
 #include <mm_malloc.h>
+#include <cmath>
 
 #include <complex>
 

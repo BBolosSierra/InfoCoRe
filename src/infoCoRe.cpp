@@ -1,7 +1,5 @@
 #include "Headers.h"
 
-
-
 //Ref Papers:
 // 1) P. Villegas et al. Laplacian paths in complex networks: Information core emerges from entropic transitions, PHYSICAL REVIEW RESEARCH 4, 033196 (2022).
 // doi: DOI: 10.1103/PhysRevResearch.4.033196
@@ -45,9 +43,41 @@ void calculate_specific_heat(const arma::vec& tau_vec,
   }
 }
 
+// [[Rcpp::export]]
+Rcpp::List renormalize_graph(const arma::Mat<double>& x,
+                            const arma::vec& tau_peak_values) {
+  
+  // If there is only one relevant tau, perform additional logic
+  //if (tau_peak_values.size() == 1) {
+  double tau = tau_peak_values(0);
+  
+  // Perform the logic from code
+  arma::mat L1 = x; // Use the input matrix directly
+  arma::mat K = exp(-tau * L1);
+  double tr = arma::trace(K);
+  arma::mat rho = K / tr;
+  arma::mat adj2 = arma::zeros<arma::mat>(rho.n_rows, rho.n_cols);
+  
+  for (size_t i = 0; i < rho.n_rows; ++i) {
+    for (size_t j = 0; j < rho.n_cols; ++j) {
+      if (rho(i, j) >= rho(j, j) || rho(i, j) >= rho(i, i)) {
+        adj2(i, j) = 1;
+      }
+    }
+  }
+  // Create a list
+  Rcpp::List renorm;
+  renorm["K"] = K;
+  renorm["adj2"] = adj2;
+  renorm["tr"] = tr;
+  renorm["rho"] = rho;
+  
+  // Return the list
+  return renorm;
+}
 
-// Function to calculate entropy of a probability distribution
-// Input: mu - a vector representing the probability distribution
+// Function to calculate entropy
+// Input: mu
 // Output: ent - the calculated entropy value
 // [[Rcpp::export]]
 void entropy( const arma::vec& mu,
@@ -69,11 +99,10 @@ void entropy( const arma::vec& mu,
   
 }
 
-// Function to calculate a probability distribution from input values
-// using an exponential operation and normalization.
+
 // Variables:
 //   lambda: Vector of input values
-//   mu: Vector to store the output probability distribution
+//   mu: Vector to store the output
 //   tau: Parameter controlling the influence of the exponential operation
 //        Default value is 1
 // [[Rcpp::export]]
@@ -98,7 +127,7 @@ void net_operator( const arma::vec& lambda,
 }
 
 // Function to calculate entropy for each column in a matrix of probability distributions
-// Input: mu_matrix - a matrix representing probability distributions (each column is a distribution)
+// Input: mu_matrix
 // Output: ent_vector - a vector containing the calculated entropy values for each column
 // [[Rcpp::export]]
 void entropy_matrix(const arma::mat& mu_matrix, arma::vec& ent_vector) {
@@ -117,15 +146,21 @@ void entropy_matrix(const arma::mat& mu_matrix, arma::vec& ent_vector) {
     
     // Calculate the sum of mu[i] * log(mu[i]) for each element in mu
     for (arma::uword i = 0; i < N; i++) {
-      sum += mu[i] * std::log(mu[i]);
+      if (mu[i] > 0) {
+        sum += mu[i] * std::log(mu[i]);
+      } else {
+        sum += 0;
+      }
     }
     // Calculate the entropy
-    ent_vector(j) = -sum / std::log(N);
+    //ent_vector(j) = -sum / std::log(N);
+    // Calculate the entropy
+    ent_vector(j) = (mu.n_elem > 0) ? -sum / std::log(N) : 0;
   }
 }
 
 // [[Rcpp::export]]
-void get_transition_tau(const arma::vec& lambda,
+void net_operator_mat(const arma::vec& lambda,
                         arma::mat& mu_matrix,
                         const arma::vec& tau_vec){
   arma::uword i, j;
@@ -195,6 +230,8 @@ void get_eig( const arma::Mat<double>& x,
   }
 }
 
+
+
 // [[Rcpp::export]]
 void get_eig_cx( const arma::Mat<std::complex<double>>& x,
                  arma::vec& eigval,
@@ -230,7 +267,6 @@ void get_eig_cx( const arma::Mat<std::complex<double>>& x,
   }
   
 }
-
 
 // [[Rcpp::export]]
 arma::Mat<double> laplacian( const arma::SpMat<double>& Adj, Rcpp::IntegerVector norm=1){
@@ -399,7 +435,7 @@ Rcpp::List driver( const arma::SpMat<double>& Adj,
   arma::Mat<double> L;
   arma::Mat<std::complex<double>> L_dir;
   arma::vec tau_vec = custom_tau_vec;
-
+  
   arma::Mat<double> eigvec;
   arma::vec         eigval;
   arma::vec         mu; // for mu = 1 (net_operator)
@@ -407,10 +443,9 @@ Rcpp::List driver( const arma::SpMat<double>& Adj,
   arma::vec         ent_vector;
   arma::vec         specific_heat;
   arma::uvec        heat_peak_indices; 
-  arma::vec         tau_peak_indices;
+  arma::vec         tau_peak_values;
   double            ent=-1;
   double            tau=1;
-  
   
   arma::Mat<std::complex<double>> cx_eigvec;
   arma::vec         cx_eigval;
@@ -419,37 +454,56 @@ Rcpp::List driver( const arma::SpMat<double>& Adj,
   
   if( option_dir == 0 ){
     cout << "> undirected Adj: " << endl;
+    
     cout << "> calculate L... ";
+      
     L = laplacian(Adj, norm=option_norm);
+    
     cout << "done!" << endl;
+    
     L.brief_print("L:");
-
+    
+    result["L"] = Rcpp::wrap(L);
+    
     cout << "> TEST: " << endl;
+    
     get_eig(L, eigval, eigvec, val_only=option_valOnly, order=option_ord);
 
     eigval.brief_print("eigval:");
 
     eigvec.brief_print("eigvec:");
 
+    result["eigval"] = Rcpp::wrap(eigval);
+    
+    result["eigvec"] = Rcpp::wrap(eigvec);
+    
     cout << "> TEST2: " << endl;
     
     net_operator(eigval, mu, tau = 1);
     
     mu.brief_print("mu (net_operator):");
     
+    result["mu"] = Rcpp::wrap(mu);
+    
     cout << "> TEST3: " << endl;
     
     entropy(mu, ent);
-
+    
+    result["entropy"] = Rcpp::wrap(ent);
+    
     cout << "> entropy: " << ent << endl;
 
     cout << "> TEST4: " << endl;
     
-    get_transition_tau(eigval, mu_matrix, tau_vec);
+    net_operator_mat(eigval, mu_matrix, tau_vec);
     
     mu_matrix.brief_print("mu (get_transition_tau):");
     
     tau_vec.brief_print("taus:");
+    
+    result["mu_matrix"] = Rcpp::wrap(mu_matrix);
+    
+    result["tau_vec"] = Rcpp::wrap(tau_vec);
     
     cout << "> TEST5: " << endl;
     
@@ -457,25 +511,42 @@ Rcpp::List driver( const arma::SpMat<double>& Adj,
     
     ent_vector.brief_print("Entropy values per tau:");
     
+    result["ent_vector"] = Rcpp::wrap(ent_vector);
+    
     cout << "> TEST6: " << endl;
     
-    calculate_specific_heat(tau_vec, ent_vector, specific_heat, heat_peak_indices, tau_peak_indices);
+    calculate_specific_heat(tau_vec, ent_vector, specific_heat, heat_peak_indices, tau_peak_values);
+    
+    result["specific_heat"] = Rcpp::wrap(specific_heat);
+    
+    result["tau_peak_values"] = Rcpp::wrap(tau_peak_values);
     
     specific_heat.brief_print("Specific Heat values per tau:");
     
-    cout << "> Creating result list... " << endl;
+    tau_peak_values.brief_print("tau peak values:");
     
-    result["L"] = Rcpp::wrap(L);
-    result["eigval"] = Rcpp::wrap(eigval);
-    result["eigvec"] = Rcpp::wrap(eigvec);
-    result["mu"] = Rcpp::wrap(mu);
-    result["entropy"] = Rcpp::wrap(ent);
-    result["tau_vec"] = Rcpp::wrap(tau_vec);
-    result["mu_matrix"] = Rcpp::wrap(mu_matrix);
-    result["ent_vector"] = Rcpp::wrap(ent_vector);
-    result["specific_heat"] = Rcpp::wrap(specific_heat);
-    result["heat_peak_indices"] = Rcpp::wrap(heat_peak_indices);
-    result["tau_peak_indices"] = Rcpp::wrap(tau_peak_indices);
+    cout << "> TEST7: " << endl;
+    
+    Rcpp::List renorm = renormalize_graph(L, tau_peak_values);
+    
+    result["K"] = Rcpp::wrap(renorm["K"]);
+    result["adj2"] = Rcpp::wrap(renorm["adj2"]);
+    result["tr"] = Rcpp::wrap(renorm["tr"]);
+    result["rho"] = Rcpp::wrap(renorm["rho"]);
+    
+    // printing the matrix
+    arma::mat K = renorm["K"];
+    arma::mat adj2 = renorm["adj2"];
+    double tr = renorm["tr"];
+    arma::mat rho = renorm["rho"];
+    
+    K.brief_print("K: ");
+    
+    adj2.brief_print("adj2: ");
+    
+    Rcpp::Rcout << "tr: " << tr << std::endl;
+    
+    rho.brief_print("rho: ");
     
     cout << "> Done!! " << endl;
     

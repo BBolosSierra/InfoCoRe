@@ -4,6 +4,8 @@ rm(list=ls())
 library(infoCoRe)
 library(igraph)
 library(ggplot2)
+library(scales)
+library(Matrix)
 
 ## load graph
 gg = read.graph("/Users/s2595589/WORK/InfoCoRe/example/PPI_Presynaptic.gml",format="gml")
@@ -17,8 +19,9 @@ result <- infoCoRe::driver(Adj=as(adj,"generalMatrix"),
                  directed=0,
                  val_only=1,
                  norm=1,
-                 custom_tau_vec=c(seq(1, 100, by = 0.05), seq(110, 210, by = 50)))
+                 custom_tau_vec=c(seq(1, 50, by = 0.01)))
 
+# for visualization
 df <- data.frame(tau = result$tau_vec, entropy = 1 - result$ent_vector, heat=result$specific_heat)
 
 
@@ -38,7 +41,7 @@ p <- ggplot(df, aes(x = tau, y = entropy)) +
        y = "1 - Entropy")
 # Add the heat to the plot with a secondary y-axis
 p + geom_line(aes(y = heat), color = "red") +
-  geom_vline(xintercept = x_value_max_heat, linetype = "dashed", color = "black") + 
+  geom_vline(xintercept = result$tau_peak_values, linetype = "dashed", color = "black") + 
   scale_x_continuous(trans = log10_trans(),
                      breaks= trans_breaks("log10", function(x) 10^x),
                      labels= trans_format("log10", math_format(10^.x))) +
@@ -48,8 +51,43 @@ p + geom_line(aes(y = heat), color = "red") +
   ) + 
   annotate("rect", xmin = 10, xmax=50, ymin=0, ymax=1, alpha=.1, fill = "blue")
 
-## similar to HM-cp from https://journals.aps.org/prresearch/pdf/10.1103/PhysRevResearch.4.033196
 
+## to check if results are consistent we can compute it in R 
+## it will be quite slow 
+# Calculate the operator ρ(τ)
+tau <- 17.23
+K <- expm(-tau * result$L)
+tr <-  sum(diag(K))
+rho <- K / tr
+n = length(gg)
+adj2 = matrix(0, nrow = n, ncol = n)
+for (i in 1:n) {
+  for (j in 1:n) {
+    adj2[i, j] = ifelse((rho[i, j] >= rho[j, j]) | (rho[i, j] >= rho[i, i]), 1, 0)
+  }
+}
+
+# Find connected components
+components <- clusters(igraph::graph_from_adjacency_matrix(adj2, mode = "undirected"))
+
+# Contract nodes within each connected component
+for (supernode in components$csize) {
+  nodes <- sort(components$membership[components$membership == supernode])
+  for (node in nodes[-1]) {
+    # Contract nodes
+    G1 <- contract.vertices(G1, nodes[1], node, self.loops = FALSE)
+  }
+}
+
+# Relabel nodes
+new_labels <- seq_along(V(G1))
+set_vertex_attr(G1, "name", value = as.character(new_labels))
+
+# Print degree of each node
+degree_sequence <- degree(G1)
+print(degree_sequence)
+
+# calculating degree distributions
 degree_distribution <- degree_distribution(gg)
 
 dg <- degree(gg)
@@ -65,7 +103,6 @@ ggplot(degree_df, aes(x = degree, y = count)) +
   labs(title = "Degree Distribution",
        x = "Degree (log scale)",
        y = "Count (log scale)")
-
 
 
 ## Barabasi–Albert (BA) network
@@ -87,7 +124,7 @@ result <- infoCoRe::driver(Adj=as(adj_ba,"generalMatrix"),
                            directed=0,
                            val_only=1,
                            norm=1,
-                           custom_tau_vec=c(seq(1, 100, by = 10), seq(110, 210, by = 50)))
+                           custom_tau_vec=c(seq(1, 100, by = 10)))
 
 df <- data.frame(tau = result$tau_vec, entropy = 1 - result$ent_vector, heat=result$specific_heat)
 

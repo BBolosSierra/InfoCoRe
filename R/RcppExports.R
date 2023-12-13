@@ -5,6 +5,10 @@ calculate_specific_heat <- function(tau_vec, ent_vector, specific_heat, heat_pea
     invisible(.Call('_infoCoRe_calculate_specific_heat', PACKAGE = 'infoCoRe', tau_vec, ent_vector, specific_heat, heat_peak_indices, tau_peak_values))
 }
 
+renormalize_graph <- function(x, tau_peak_values) {
+    .Call('_infoCoRe_renormalize_graph', PACKAGE = 'infoCoRe', x, tau_peak_values)
+}
+
 entropy <- function(mu, ent) {
     invisible(.Call('_infoCoRe_entropy', PACKAGE = 'infoCoRe', mu, ent))
 }
@@ -17,8 +21,8 @@ entropy_matrix <- function(mu_matrix, ent_vector) {
     invisible(.Call('_infoCoRe_entropy_matrix', PACKAGE = 'infoCoRe', mu_matrix, ent_vector))
 }
 
-get_transition_tau <- function(lambda, mu_matrix, tau_vec) {
-    invisible(.Call('_infoCoRe_get_transition_tau', PACKAGE = 'infoCoRe', lambda, mu_matrix, tau_vec))
+net_operator_mat <- function(lambda, mu_matrix, tau_vec) {
+    invisible(.Call('_infoCoRe_net_operator_mat', PACKAGE = 'infoCoRe', lambda, mu_matrix, tau_vec))
 }
 
 get_eig <- function(x, eigval, eigvec, val_only = 0L, order = 1L) {

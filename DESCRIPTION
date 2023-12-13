@@ -2,7 +2,7 @@ Package: infoCoRe
 Title: Network Information Cores
 Version: 1.0
 Date: 2023-12-09
-Author: Colin Mclean and Bego Bolos
+Author: Colin Mclean and Begoña Bolos
 Maintainer: Colin Mclean <Colin.D.Mclean@ed.ac.uk>
 Description: Locating a Networks Information Cores from Enropic Transitions
 Depends: R (>= 3.6.3) 

@@ -53,18 +53,33 @@ Rcpp::List renormalize_graph(const arma::Mat<double>& x,
   
   // Perform the logic from code
   arma::mat L1 = x; // Use the input matrix directly
-  arma::mat K = exp(-tau * L1);
+  arma::mat K = expmat(-tau * L1);
   double tr = arma::trace(K);
   arma::mat rho = K / tr;
+  
   arma::mat adj2 = arma::zeros<arma::mat>(rho.n_rows, rho.n_cols);
+  double rho_tmp;
   
   for (size_t i = 0; i < rho.n_rows; ++i) {
+    for (size_t j = 0; j < rho.n_cols; ++j) {
+      
+      rho_tmp = rho(i, j)/std::min(rho(i, i), rho(j, j));
+      if (rho_tmp - 1  >= 0){
+        adj2(i, j) = 1;
+      } else if (rho_tmp - 1 < 0){
+        adj2(i, j) = 0;
+      }
+    }
+  }
+  
+  /*for (size_t i = 0; i < rho.n_rows; ++i) {
     for (size_t j = 0; j < rho.n_cols; ++j) {
       if (rho(i, j) >= rho(j, j) || rho(i, j) >= rho(i, i)) {
         adj2(i, j) = 1;
       }
     }
-  }
+  }*/
+  
   // Create a list
   Rcpp::List renorm;
   renorm["K"] = K;
@@ -146,16 +161,16 @@ void entropy_matrix(const arma::mat& mu_matrix, arma::vec& ent_vector) {
     
     // Calculate the sum of mu[i] * log(mu[i]) for each element in mu
     for (arma::uword i = 0; i < N; i++) {
-      if (mu[i] > 0) {
-        sum += mu[i] * std::log(mu[i]);
-      } else {
+      if (mu[i] == 0) {
         sum += 0;
+      } else {
+        sum += mu[i] * std::log(mu[i]);
       }
     }
     // Calculate the entropy
     //ent_vector(j) = -sum / std::log(N);
     // Calculate the entropy
-    ent_vector(j) = (mu.n_elem > 0) ? -sum / std::log(N) : 0;
+    ent_vector(j) = -1 * (sum / std::log(N));
   }
 }
 
@@ -464,6 +479,8 @@ Rcpp::List driver( const arma::SpMat<double>& Adj,
     L.brief_print("L:");
     
     result["L"] = Rcpp::wrap(L);
+    
+    // rho
     
     cout << "> TEST: " << endl;
     
